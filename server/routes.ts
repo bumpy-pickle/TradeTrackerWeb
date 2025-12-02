@@ -301,7 +301,7 @@ function calculateHoursFromTimes(startTime: any, endTime: any): number {
   return hoursDiff;
 }
 
-// Helper function to parse time strings like "9:00 AM", "14:30", etc.
+// Helper function to parse time strings like "9:00 AM", "14:30", or datetime like "11/5/2025 6:00 PM"
 // Returns -1 for invalid/unparseable times
 function parseTimeString(timeStr: string): number {
   if (!timeStr || String(timeStr).trim() === "") {
@@ -310,7 +310,25 @@ function parseTimeString(timeStr: string): number {
   
   const str = String(timeStr).trim().toUpperCase();
   
-  // Try to match HH:MM:SS AM/PM or HH:MM AM/PM format
+  // Try to extract time from datetime format like "11/5/2025 6:00 PM" or "2025-01-15 14:30"
+  // Match date followed by time
+  const dateTimeMatch = str.match(/\d+[\/\-]\d+[\/\-]\d+\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (dateTimeMatch) {
+    let hours = parseInt(dateTimeMatch[1], 10);
+    const minutes = parseInt(dateTimeMatch[2], 10);
+    const seconds = dateTimeMatch[3] ? parseInt(dateTimeMatch[3], 10) : 0;
+    const period = dateTimeMatch[4];
+    
+    if (period === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (period === "AM" && hours === 12) {
+      hours = 0;
+    }
+    
+    return (hours + minutes / 60 + seconds / 3600) / 24;
+  }
+  
+  // Try to match just time: HH:MM:SS AM/PM or HH:MM AM/PM format
   const ampmMatch = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
   if (ampmMatch) {
     let hours = parseInt(ampmMatch[1], 10);
