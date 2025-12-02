@@ -71,85 +71,126 @@ export function SummaryTable({ data }: SummaryTableProps) {
   };
 
   return (
-    <ScrollArea className="h-[400px]" data-testid="table-summary">
-      <Table>
-        <TableHeader className="sticky top-0 bg-card z-10">
-          <TableRow className="hover:bg-transparent">
-            <TableHead 
-              className="font-semibold cursor-pointer select-none hover-elevate" 
-              onClick={() => handleSort("name")}
-              data-testid="header-name"
-            >
-              <div className="flex items-center gap-1.5">
-                Name
-                <SortIcon column="name" />
-              </div>
-            </TableHead>
-            <TableHead 
-              className="font-semibold text-right cursor-pointer select-none hover-elevate" 
-              onClick={() => handleSort("youWorked")}
-              data-testid="header-you-worked"
-            >
-              <div className="flex items-center justify-end gap-1.5">
-                You Worked
-                <SortIcon column="youWorked" />
-              </div>
-            </TableHead>
-            <TableHead 
-              className="font-semibold text-right cursor-pointer select-none hover-elevate" 
-              onClick={() => handleSort("theyWorked")}
-              data-testid="header-they-worked"
-            >
-              <div className="flex items-center justify-end gap-1.5">
-                They Worked
-                <SortIcon column="theyWorked" />
-              </div>
-            </TableHead>
-            <TableHead 
-              className="font-semibold text-right cursor-pointer select-none hover-elevate" 
-              onClick={() => handleSort("total")}
-              data-testid="header-total"
-            >
-              <div className="flex items-center justify-end gap-1.5">
-                Total
-                <SortIcon column="total" />
-              </div>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <div className="relative" data-testid="table-summary">
+      {/* Mobile card view */}
+      <div className="block md:hidden max-h-[400px] overflow-y-auto">
+        <div className="divide-y">
           {sortedData.map((row, index) => (
-            <TableRow
+            <div
               key={row.name}
-              className={index % 2 === 0 ? "bg-background" : "bg-muted/30"}
-              data-testid={`row-summary-${index}`}
+              className={`p-3 ${index % 2 === 0 ? "bg-background" : "bg-muted/30"}`}
+              data-testid={`row-summary-mobile-${index}`}
             >
-              <TableCell className="font-medium" data-testid={`cell-name-${index}`}>
-                {row.name}
-              </TableCell>
-              <TableCell className="text-right tabular-nums" data-testid={`cell-you-worked-${index}`}>
-                {row.youWorked > 0 ? row.youWorked : ""}
-              </TableCell>
-              <TableCell className="text-right tabular-nums" data-testid={`cell-they-worked-${index}`}>
-                {row.theyWorked > 0 ? row.theyWorked : ""}
-              </TableCell>
-              <TableCell className="text-right" data-testid={`cell-total-${index}`}>
-                <div className="flex items-center justify-end gap-1">
+              <div className="flex justify-between items-center gap-2 mb-2">
+                <span className="font-medium text-sm truncate flex-1" data-testid={`cell-name-mobile-${index}`}>
+                  {row.name}
+                </span>
+                <div className="flex items-center gap-1" data-testid={`cell-total-mobile-${index}`}>
                   <TriangleIcon 
                     className={`w-3 h-3 fill-current ${getTotalColor(row.total)}`} 
                     style={{ 
                       transform: row.total >= 0 ? 'rotate(0deg)' : 'rotate(180deg)' 
                     }}
                   />
-                  <span className={`font-semibold tabular-nums ${getTotalColor(row.total)}`}>
-                    {Math.abs(row.total)}
+                  <span className={`font-semibold text-sm tabular-nums ${getTotalColor(row.total)}`}>
+                    {row.total >= 0 ? '+' : '-'}{Math.abs(row.total)}
                   </span>
                 </div>
-              </TableCell>
-            </TableRow>
+              </div>
+              <div className="flex justify-between items-center gap-4 text-xs text-muted-foreground">
+                <span data-testid={`cell-you-worked-mobile-${index}`}>
+                  You worked: <span className="font-medium text-foreground">{row.youWorked || 0}</span>
+                </span>
+                <span data-testid={`cell-they-worked-mobile-${index}`}>
+                  They worked: <span className="font-medium text-foreground">{row.theyWorked || 0}</span>
+                </span>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+        </div>
+      </div>
+      
+      {/* Desktop table view */}
+      <ScrollArea className="h-[400px] hidden md:block">
+        <Table>
+          <TableHeader className="sticky top-0 bg-card z-10">
+            <TableRow className="hover:bg-transparent">
+              <TableHead 
+                className="font-semibold cursor-pointer select-none hover-elevate" 
+                onClick={() => handleSort("name")}
+                data-testid="header-name"
+              >
+                <div className="flex items-center gap-1.5">
+                  Name
+                  <SortIcon column="name" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-semibold text-right cursor-pointer select-none hover-elevate" 
+                onClick={() => handleSort("youWorked")}
+                data-testid="header-you-worked"
+              >
+                <div className="flex items-center justify-end gap-1.5">
+                  You Worked
+                  <SortIcon column="youWorked" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-semibold text-right cursor-pointer select-none hover-elevate" 
+                onClick={() => handleSort("theyWorked")}
+                data-testid="header-they-worked"
+              >
+                <div className="flex items-center justify-end gap-1.5">
+                  They Worked
+                  <SortIcon column="theyWorked" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-semibold text-right cursor-pointer select-none hover-elevate" 
+                onClick={() => handleSort("total")}
+                data-testid="header-total"
+              >
+                <div className="flex items-center justify-end gap-1.5">
+                  Total
+                  <SortIcon column="total" />
+                </div>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedData.map((row, index) => (
+              <TableRow
+                key={row.name}
+                className={index % 2 === 0 ? "bg-background" : "bg-muted/30"}
+                data-testid={`row-summary-${index}`}
+              >
+                <TableCell className="font-medium" data-testid={`cell-name-${index}`}>
+                  {row.name}
+                </TableCell>
+                <TableCell className="text-right tabular-nums" data-testid={`cell-you-worked-${index}`}>
+                  {row.youWorked > 0 ? row.youWorked : ""}
+                </TableCell>
+                <TableCell className="text-right tabular-nums" data-testid={`cell-they-worked-${index}`}>
+                  {row.theyWorked > 0 ? row.theyWorked : ""}
+                </TableCell>
+                <TableCell className="text-right" data-testid={`cell-total-${index}`}>
+                  <div className="flex items-center justify-end gap-1">
+                    <TriangleIcon 
+                      className={`w-3 h-3 fill-current ${getTotalColor(row.total)}`} 
+                      style={{ 
+                        transform: row.total >= 0 ? 'rotate(0deg)' : 'rotate(180deg)' 
+                      }}
+                    />
+                    <span className={`font-semibold tabular-nums ${getTotalColor(row.total)}`}>
+                      {Math.abs(row.total)}
+                    </span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </div>
   );
 }

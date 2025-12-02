@@ -87,75 +87,108 @@ export function TradeListTable({ trades }: TradeListTableProps) {
   }
 
   return (
-    <ScrollArea className="h-[400px]" data-testid="table-trade-list">
-      <Table>
-        <TableHeader className="sticky top-0 bg-card z-10">
-          <TableRow className="hover:bg-transparent">
-            <TableHead
-              className="cursor-pointer group font-semibold"
-              onClick={() => handleSort("person1")}
-              data-testid="header-person1"
-            >
-              <div className="flex items-center gap-1">
-                Person 1
-                <SortIcon field="person1" />
-              </div>
-            </TableHead>
-            <TableHead
-              className="cursor-pointer group font-semibold"
-              onClick={() => handleSort("date")}
-              data-testid="header-date"
-            >
-              <div className="flex items-center gap-1">
-                Date
-                <SortIcon field="date" />
-              </div>
-            </TableHead>
-            <TableHead
-              className="cursor-pointer group font-semibold text-center"
-              onClick={() => handleSort("hours")}
-              data-testid="header-hours"
-            >
-              <div className="flex items-center justify-center gap-1">
-                Hours
-                <SortIcon field="hours" />
-              </div>
-            </TableHead>
-            <TableHead
-              className="cursor-pointer group font-semibold"
-              onClick={() => handleSort("person2")}
-              data-testid="header-person2"
-            >
-              <div className="flex items-center gap-1">
-                Person 2
-                <SortIcon field="person2" />
-              </div>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <div className="relative" data-testid="table-trade-list">
+      {/* Mobile card view */}
+      <div className="block md:hidden max-h-[400px] overflow-y-auto">
+        <div className="divide-y">
           {sortedTrades.map((trade, index) => (
-            <TableRow
+            <div
               key={trade.id}
-              className={index % 2 === 0 ? "bg-background" : "bg-muted/30"}
-              data-testid={`row-trade-${index}`}
+              className={`p-3 ${index % 2 === 0 ? "bg-background" : "bg-muted/30"}`}
+              data-testid={`row-trade-mobile-${index}`}
             >
-              <TableCell className="font-medium" data-testid={`cell-person1-${index}`}>
-                {trade.person1}
-              </TableCell>
-              <TableCell data-testid={`cell-date-${index}`}>
-                {formatDate(trade.date)}
-              </TableCell>
-              <TableCell className="text-center font-medium" data-testid={`cell-hours-${index}`}>
-                {trade.hours}
-              </TableCell>
-              <TableCell data-testid={`cell-person2-${index}`}>
-                {trade.person2}
-              </TableCell>
-            </TableRow>
+              <div className="flex justify-between items-start gap-2 mb-1">
+                <span className="font-medium text-sm truncate flex-1" data-testid={`cell-person1-mobile-${index}`}>
+                  {trade.person1}
+                </span>
+                <span className="text-sm font-semibold text-primary whitespace-nowrap" data-testid={`cell-hours-mobile-${index}`}>
+                  {trade.hours} hrs
+                </span>
+              </div>
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-sm text-muted-foreground truncate flex-1" data-testid={`cell-person2-mobile-${index}`}>
+                  with {trade.person2}
+                </span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap" data-testid={`cell-date-mobile-${index}`}>
+                  {formatDate(trade.date)}
+                </span>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+        </div>
+      </div>
+      
+      {/* Desktop table view */}
+      <ScrollArea className="h-[400px] hidden md:block">
+        <Table>
+          <TableHeader className="sticky top-0 bg-card z-10">
+            <TableRow className="hover:bg-transparent">
+              <TableHead
+                className="cursor-pointer group font-semibold"
+                onClick={() => handleSort("person1")}
+                data-testid="header-person1"
+              >
+                <div className="flex items-center gap-1">
+                  Person 1
+                  <SortIcon field="person1" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer group font-semibold"
+                onClick={() => handleSort("date")}
+                data-testid="header-date"
+              >
+                <div className="flex items-center gap-1">
+                  Date
+                  <SortIcon field="date" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer group font-semibold text-center"
+                onClick={() => handleSort("hours")}
+                data-testid="header-hours"
+              >
+                <div className="flex items-center justify-center gap-1">
+                  Hours
+                  <SortIcon field="hours" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer group font-semibold"
+                onClick={() => handleSort("person2")}
+                data-testid="header-person2"
+              >
+                <div className="flex items-center gap-1">
+                  Person 2
+                  <SortIcon field="person2" />
+                </div>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedTrades.map((trade, index) => (
+              <TableRow
+                key={trade.id}
+                className={index % 2 === 0 ? "bg-background" : "bg-muted/30"}
+                data-testid={`row-trade-${index}`}
+              >
+                <TableCell className="font-medium" data-testid={`cell-person1-${index}`}>
+                  {trade.person1}
+                </TableCell>
+                <TableCell data-testid={`cell-date-${index}`}>
+                  {formatDate(trade.date)}
+                </TableCell>
+                <TableCell className="text-center font-medium" data-testid={`cell-hours-${index}`}>
+                  {trade.hours}
+                </TableCell>
+                <TableCell data-testid={`cell-person2-${index}`}>
+                  {trade.person2}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </div>
   );
 }

@@ -18,7 +18,7 @@ interface WorkedHoursChartProps {
 export function WorkedHoursChart({ data }: WorkedHoursChartProps) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[350px] text-muted-foreground" data-testid="chart-empty">
+      <div className="flex items-center justify-center h-[200px] sm:h-[350px] text-sm text-muted-foreground" data-testid="chart-empty">
         No data to display
       </div>
     );
@@ -96,59 +96,120 @@ export function WorkedHoursChart({ data }: WorkedHoursChartProps) {
 
   return (
     <div className="w-full" data-testid="chart-worked-hours">
-      <ResponsiveContainer width="100%" height={350}>
-        <ComposedChart
-          data={formattedData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis
-            dataKey="displayName"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            tickLine={false}
-            axisLine={{ stroke: "hsl(var(--border))" }}
-            angle={-45}
-            textAnchor="end"
-            height={80}
-            interval={0}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            tickLine={false}
-            axisLine={{ stroke: "hsl(var(--border))" }}
-            domain={[yAxisMin, yAxisMax]}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            wrapperStyle={{ paddingTop: 20 }}
-            iconType="circle"
-            iconSize={8}
-          />
-          <Bar
-            dataKey="theyWorked"
-            name="How much THEY have worked"
-            fill="hsl(var(--chart-1))"
-            radius={[2, 2, 0, 0]}
-            maxBarSize={40}
-          />
-          <Bar
-            dataKey="youWorked"
-            name="How much YOU have worked"
-            fill="hsl(var(--chart-2))"
-            radius={[2, 2, 0, 0]}
-            maxBarSize={40}
-          />
-          <Line
-            type="monotone"
-            dataKey="total"
-            name="Total"
-            stroke="hsl(var(--muted-foreground))"
-            strokeWidth={2}
-            dot={{ fill: "hsl(var(--muted-foreground))", r: 4 }}
-            activeDot={{ r: 6, fill: "hsl(var(--primary))" }}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+      {/* Mobile chart - smaller height */}
+      <div className="block sm:hidden">
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart
+            data={formattedData}
+            margin={{ top: 10, right: 10, left: 0, bottom: 70 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey="displayName"
+              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+              angle={-55}
+              textAnchor="end"
+              height={80}
+              interval={0}
+            />
+            <YAxis
+              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+              domain={[yAxisMin, yAxisMax]}
+              width={35}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              wrapperStyle={{ paddingTop: 10, fontSize: 10 }}
+              iconType="circle"
+              iconSize={6}
+            />
+            <Bar
+              dataKey="theyWorked"
+              name="They worked"
+              fill="hsl(var(--chart-1))"
+              radius={[2, 2, 0, 0]}
+              maxBarSize={25}
+            />
+            <Bar
+              dataKey="youWorked"
+              name="You worked"
+              fill="hsl(var(--chart-2))"
+              radius={[2, 2, 0, 0]}
+              maxBarSize={25}
+            />
+            <Line
+              type="monotone"
+              dataKey="total"
+              name="Total"
+              stroke="hsl(var(--muted-foreground))"
+              strokeWidth={2}
+              dot={{ fill: "hsl(var(--muted-foreground))", r: 3 }}
+              activeDot={{ r: 5, fill: "hsl(var(--primary))" }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      
+      {/* Desktop chart */}
+      <div className="hidden sm:block">
+        <ResponsiveContainer width="100%" height={350}>
+          <ComposedChart
+            data={formattedData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey="displayName"
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+              interval={0}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+              domain={[yAxisMin, yAxisMax]}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              wrapperStyle={{ paddingTop: 20 }}
+              iconType="circle"
+              iconSize={8}
+            />
+            <Bar
+              dataKey="theyWorked"
+              name="How much THEY have worked"
+              fill="hsl(var(--chart-1))"
+              radius={[2, 2, 0, 0]}
+              maxBarSize={40}
+            />
+            <Bar
+              dataKey="youWorked"
+              name="How much YOU have worked"
+              fill="hsl(var(--chart-2))"
+              radius={[2, 2, 0, 0]}
+              maxBarSize={40}
+            />
+            <Line
+              type="monotone"
+              dataKey="total"
+              name="Total"
+              stroke="hsl(var(--muted-foreground))"
+              strokeWidth={2}
+              dot={{ fill: "hsl(var(--muted-foreground))", r: 4 }}
+              activeDot={{ r: 6, fill: "hsl(var(--primary))" }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

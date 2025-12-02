@@ -209,34 +209,83 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <h1 className="text-2xl font-semibold text-foreground" data-testid="text-page-title">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <h1 className="text-lg sm:text-2xl font-semibold text-foreground truncate" data-testid="text-page-title">
               Shift Trades Tracker
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {hasData && (
                 <>
-                  {/* Comparison Mode Toggle */}
+                  {/* Comparison Mode Toggle - hidden on mobile */}
                   <Button
                     variant={comparisonMode ? "default" : "outline"}
+                    size="sm"
                     onClick={() => {
                       setComparisonMode(!comparisonMode);
                       if (comparisonMode) {
                         setSelectedForComparison([]);
                       }
                     }}
+                    className="hidden sm:flex"
                     data-testid="button-comparison-mode"
                   >
-                    <Users className="w-4 h-4 mr-2" />
-                    {comparisonMode ? "Exit Compare" : "Compare"}
+                    <Users className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden md:inline">{comparisonMode ? "Exit Compare" : "Compare"}</span>
+                  </Button>
+                  
+                  {/* Mobile comparison toggle */}
+                  <Button
+                    variant={comparisonMode ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => {
+                      setComparisonMode(!comparisonMode);
+                      if (comparisonMode) {
+                        setSelectedForComparison([]);
+                      }
+                    }}
+                    className="sm:hidden"
+                    data-testid="button-comparison-mode-mobile"
+                  >
+                    <Users className="w-4 h-4" />
                   </Button>
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" data-testid="button-export">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export
+                      <Button variant="outline" size="icon" className="sm:hidden" data-testid="button-export-mobile">
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => exportAllToCSV(filteredTrades, filteredSummary)}
+                        data-testid="menu-export-all-mobile"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Export All (CSV)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => exportTradesToCSV(filteredTrades, "trade-list")}
+                        data-testid="menu-export-trades-mobile"
+                      >
+                        <Table2 className="w-4 h-4 mr-2" />
+                        Export Trade List (CSV)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => exportSummaryToCSV(filteredSummary, "summary")}
+                        data-testid="menu-export-summary-mobile"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Export Summary (CSV)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="hidden sm:flex" data-testid="button-export">
+                        <Download className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden md:inline">Export</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -276,9 +325,9 @@ export default function Dashboard() {
           
           {/* Filter Controls Row */}
           {hasData && (
-            <div className="flex items-center gap-4 mt-4 flex-wrap">
-              {/* Search */}
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <div className="flex flex-col gap-3 mt-3 sm:mt-4">
+              {/* Search - full width on mobile */}
+              <div className="relative w-full sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
@@ -299,101 +348,110 @@ export default function Dashboard() {
                 )}
               </div>
               
-              {/* Name Filter */}
-              <div className="flex items-center gap-2">
-                <Label htmlFor="name-filter" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                  Name
-                </Label>
-                <Select value={selectedName} onValueChange={setSelectedName}>
-                  <SelectTrigger 
-                    id="name-filter" 
-                    className="w-[180px]"
-                    data-testid="select-name-filter"
+              {/* Filters row - scrollable on mobile */}
+              <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-2 -mb-2 sm:pb-0 sm:mb-0 sm:flex-wrap">
+                {/* Name Filter */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Label htmlFor="name-filter" className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
+                    Name
+                  </Label>
+                  <Select value={selectedName} onValueChange={setSelectedName}>
+                    <SelectTrigger 
+                      id="name-filter" 
+                      className="w-[120px] sm:w-[180px]"
+                      data-testid="select-name-filter"
+                    >
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" data-testid="select-option-all">All</SelectItem>
+                      {uniqueNames.map((name) => (
+                        <SelectItem key={name} value={name} data-testid={`select-option-${name.replace(/\s+/g, '-').toLowerCase()}`}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Date Range */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Label className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
+                    From
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-[110px] sm:w-[140px] justify-start text-left font-normal"
+                        data-testid="button-start-date"
+                      >
+                        <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-xs sm:text-sm">
+                          {startDate ? format(startDate, "M/d/yy") : "Pick"}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                        data-testid="calendar-start-date"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Label className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
+                    To
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-[110px] sm:w-[140px] justify-start text-left font-normal"
+                        data-testid="button-end-date"
+                      >
+                        <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-xs sm:text-sm">
+                          {endDate ? format(endDate, "M/d/yy") : "Pick"}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                        data-testid="calendar-end-date"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                {/* Clear Filters Button */}
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="text-muted-foreground flex-shrink-0"
+                    data-testid="button-clear-filters"
                   >
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" data-testid="select-option-all">All</SelectItem>
-                    {uniqueNames.map((name) => (
-                      <SelectItem key={name} value={name} data-testid={`select-option-${name.replace(/\s+/g, '-').toLowerCase()}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <X className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </Button>
+                )}
               </div>
-              
-              {/* Date Range */}
-              <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                  From
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-[140px] justify-start text-left font-normal"
-                      data-testid="button-start-date"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "MM/dd/yyyy") : <span className="text-muted-foreground">Pick date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                      data-testid="calendar-start-date"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                  To
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-[140px] justify-start text-left font-normal"
-                      data-testid="button-end-date"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "MM/dd/yyyy") : <span className="text-muted-foreground">Pick date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                      initialFocus
-                      data-testid="calendar-end-date"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              {/* Clear Filters Button */}
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="text-muted-foreground"
-                  data-testid="button-clear-filters"
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  Clear filters
-                </Button>
-              )}
               
               {/* Filter Summary */}
-              <div className="text-sm text-muted-foreground ml-auto">
+              <div className="text-xs sm:text-sm text-muted-foreground">
                 Showing {filteredTrades.length} of {trades.length} trades
               </div>
             </div>
@@ -401,19 +459,19 @@ export default function Dashboard() {
           
           {/* Comparison Mode Selector */}
           {hasData && comparisonMode && (
-            <div className="mt-4 p-4 border rounded-md bg-muted/30">
-              <div className="flex items-center justify-between mb-3">
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 border rounded-md bg-muted/30">
+              <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  <span className="font-medium text-sm">Select employees to compare</span>
+                  <Users className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm">Select employees to compare</span>
                 </div>
                 {selectedForComparison.length > 0 && (
                   <Badge variant="secondary" data-testid="badge-comparison-count">
-                    {selectedForComparison.length} selected
+                    {selectedForComparison.length}
                   </Badge>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {uniqueNames.map((name) => {
                   const isSelected = selectedForComparison.includes(name);
                   return (
@@ -422,18 +480,18 @@ export default function Dashboard() {
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
                       onClick={() => toggleComparison(name)}
-                      className="gap-2"
+                      className="gap-1 sm:gap-2 text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3"
                       data-testid={`button-compare-${name.replace(/\s+/g, '-').toLowerCase()}`}
                     >
                       {isSelected && <Check className="w-3 h-3" />}
-                      {name}
+                      <span className="truncate max-w-[100px] sm:max-w-none">{name}</span>
                     </Button>
                   );
                 })}
               </div>
               {selectedForComparison.length === 0 && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Click on employee names above to add them to the comparison view.
+                <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+                  Tap names above to compare employees.
                 </p>
               )}
             </div>
@@ -442,14 +500,14 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6">
         {!hasData ? (
           <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <CardContent className="flex flex-col items-center justify-center py-8 sm:py-16 px-4">
+              <div className="text-center space-y-4 w-full">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
                   <svg
-                    className="w-8 h-8 text-muted-foreground"
+                    className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -463,10 +521,10 @@ export default function Dashboard() {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground" data-testid="text-empty-title">
+                  <h2 className="text-base sm:text-lg font-semibold text-foreground" data-testid="text-empty-title">
                     No Trade Data Uploaded
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-1" data-testid="text-empty-description">
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1" data-testid="text-empty-description">
                     Paste data or upload an Excel file to visualize your shift trades
                   </p>
                 </div>
@@ -480,25 +538,25 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Worked Hours Chart */}
             <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold" data-testid="text-chart-title">
+              <CardHeader className="pb-2 sm:pb-4 px-3 sm:px-6">
+                <CardTitle className="text-base sm:text-lg font-semibold" data-testid="text-chart-title">
                   Worked Hours
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-2 sm:px-6">
                 <WorkedHoursChart data={filteredChartData} />
               </CardContent>
             </Card>
 
             {/* Tables Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Trade List Table */}
               <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-semibold" data-testid="text-tradelist-title">
+                <CardHeader className="pb-2 sm:pb-4 px-3 sm:px-6">
+                  <CardTitle className="text-base sm:text-lg font-semibold" data-testid="text-tradelist-title">
                     Trade list
                   </CardTitle>
                 </CardHeader>
@@ -509,8 +567,8 @@ export default function Dashboard() {
 
               {/* Summary Table */}
               <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-semibold" data-testid="text-summary-title">
+                <CardHeader className="pb-2 sm:pb-4 px-3 sm:px-6">
+                  <CardTitle className="text-base sm:text-lg font-semibold" data-testid="text-summary-title">
                     Summary
                   </CardTitle>
                 </CardHeader>
