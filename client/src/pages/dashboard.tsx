@@ -2,16 +2,40 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { FileUpload } from "@/components/file-upload";
 import { WorkedHoursChart } from "@/components/worked-hours-chart";
 import { TradeListTable } from "@/components/trade-list-table";
 import { SummaryTable } from "@/components/summary-table";
+import { exportTradesToCSV, exportSummaryToCSV, exportAllToCSV } from "@/lib/export-utils";
+import { Download, FileSpreadsheet, Table2, FileText, CalendarIcon, Search, X, Users, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 import type { Trade, PersonSummary, WorkedHoursChartData } from "@shared/schema";
 
 export default function Dashboard() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [selectedName, setSelectedName] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [selectedForComparison, setSelectedForComparison] = useState<string[]>([]);
 
   // Get unique names from trades for the filter dropdown
   const uniqueNames = useMemo(() => {
@@ -67,28 +91,94 @@ export default function Dashboard() {
     }));
   }, [summaryData]);
 
-  // Filter data based on selected name
+  // Filter data based on selected name, date range, and search query
   const filteredTrades = useMemo(() => {
-    if (selectedName === "all") return trades;
-    return trades.filter(
-      (trade) => trade.person1 === selectedName || trade.person2 === selectedName
-    );
-  }, [trades, selectedName]);
+    let filtered = trades;
+    
+    // Filter by name
+    if (selectedName !== "all") {
+      filtered = filtered.filter(
+        (trade) => trade.person1 === selectedName || trade.person2 === selectedName
+      );
+    }
+    
+    // Filter by date range
+    if (startDate) {
+      filtered = filtered.filter((trade) => {
+        const tradeDate = new Date(trade.date);
+        return tradeDate >= startDate;
+      });
+    }
+    if (endDate) {
+      filtered = filtered.filter((trade) => {
+        const tradeDate = new Date(trade.date);
+        // Set end date to end of day for inclusive comparison
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        return tradeDate <= endOfDay;
+      });
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(
+        (trade) =>
+          trade.person1.toLowerCase().includes(query) ||
+          trade.person2.toLowerCase().includes(query) ||
+          trade.date.toLowerCase().includes(query) ||
+          trade.hours.toString().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [trades, selectedName, startDate, endDate, searchQuery]);
 
   const filteredSummary = useMemo(() => {
+    if (comparisonMode && selectedForComparison.length > 0) {
+      return summaryData.filter((s) => selectedForComparison.includes(s.name));
+    }
     if (selectedName === "all") return summaryData;
     return summaryData.filter((s) => s.name === selectedName);
-  }, [summaryData, selectedName]);
+  }, [summaryData, selectedName, comparisonMode, selectedForComparison]);
 
   const filteredChartData = useMemo(() => {
+    if (comparisonMode && selectedForComparison.length > 0) {
+      return chartData.filter((c) => selectedForComparison.includes(c.name));
+    }
     if (selectedName === "all") return chartData;
     return chartData.filter((c) => c.name === selectedName);
-  }, [chartData, selectedName]);
+  }, [chartData, selectedName, comparisonMode, selectedForComparison]);
 
   const handleDataUpload = (uploadedTrades: Trade[]) => {
     setTrades(uploadedTrades);
     setSelectedName("all");
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setSearchQuery("");
+    setComparisonMode(false);
+    setSelectedForComparison([]);
   };
+  
+  const clearFilters = () => {
+    setSelectedName("all");
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setSearchQuery("");
+    setComparisonMode(false);
+    setSelectedForComparison([]);
+  };
+  
+  const toggleComparison = (name: string) => {
+    setSelectedForComparison((prev) => {
+      if (prev.includes(name)) {
+        return prev.filter((n) => n !== name);
+      }
+      return [...prev, name];
+    });
+  };
+  
+  const hasActiveFilters = selectedName !== "all" || startDate || endDate || searchQuery.trim() || comparisonMode;
 
   const hasData = trades.length > 0;
 
@@ -101,30 +191,56 @@ export default function Dashboard() {
             <h1 className="text-2xl font-semibold text-foreground" data-testid="text-page-title">
               Shift Trades Tracker
             </h1>
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
               {hasData && (
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="name-filter" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                    Name
-                  </Label>
-                  <Select value={selectedName} onValueChange={setSelectedName}>
-                    <SelectTrigger 
-                      id="name-filter" 
-                      className="w-[180px]"
-                      data-testid="select-name-filter"
-                    >
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all" data-testid="select-option-all">All</SelectItem>
-                      {uniqueNames.map((name) => (
-                        <SelectItem key={name} value={name} data-testid={`select-option-${name.replace(/\s+/g, '-').toLowerCase()}`}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  {/* Comparison Mode Toggle */}
+                  <Button
+                    variant={comparisonMode ? "default" : "outline"}
+                    onClick={() => {
+                      setComparisonMode(!comparisonMode);
+                      if (comparisonMode) {
+                        setSelectedForComparison([]);
+                      }
+                    }}
+                    data-testid="button-comparison-mode"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    {comparisonMode ? "Exit Compare" : "Compare"}
+                  </Button>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" data-testid="button-export">
+                        <Download className="w-4 h-4 mr-2" />
+                        Export
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => exportAllToCSV(filteredTrades, filteredSummary)}
+                        data-testid="menu-export-all"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Export All (CSV)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => exportTradesToCSV(filteredTrades, "trade-list")}
+                        data-testid="menu-export-trades"
+                      >
+                        <Table2 className="w-4 h-4 mr-2" />
+                        Export Trade List (CSV)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => exportSummaryToCSV(filteredSummary, "summary")}
+                        data-testid="menu-export-summary"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Export Summary (CSV)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               )}
               <FileUpload 
                 onDataUpload={handleDataUpload} 
@@ -133,6 +249,171 @@ export default function Dashboard() {
               />
             </div>
           </div>
+          
+          {/* Filter Controls Row */}
+          {hasData && (
+            <div className="flex items-center gap-4 mt-4 flex-wrap">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search trades..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9"
+                  data-testid="input-search"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    data-testid="button-clear-search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Name Filter */}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="name-filter" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  Name
+                </Label>
+                <Select value={selectedName} onValueChange={setSelectedName}>
+                  <SelectTrigger 
+                    id="name-filter" 
+                    className="w-[180px]"
+                    data-testid="select-name-filter"
+                  >
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" data-testid="select-option-all">All</SelectItem>
+                    {uniqueNames.map((name) => (
+                      <SelectItem key={name} value={name} data-testid={`select-option-${name.replace(/\s+/g, '-').toLowerCase()}`}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Date Range */}
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  From
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-[140px] justify-start text-left font-normal"
+                      data-testid="button-start-date"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "MM/dd/yyyy") : <span className="text-muted-foreground">Pick date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                      data-testid="calendar-start-date"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  To
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-[140px] justify-start text-left font-normal"
+                      data-testid="button-end-date"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "MM/dd/yyyy") : <span className="text-muted-foreground">Pick date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                      data-testid="calendar-end-date"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              {/* Clear Filters Button */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-muted-foreground"
+                  data-testid="button-clear-filters"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear filters
+                </Button>
+              )}
+              
+              {/* Filter Summary */}
+              <div className="text-sm text-muted-foreground ml-auto">
+                Showing {filteredTrades.length} of {trades.length} trades
+              </div>
+            </div>
+          )}
+          
+          {/* Comparison Mode Selector */}
+          {hasData && comparisonMode && (
+            <div className="mt-4 p-4 border rounded-md bg-muted/30">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="font-medium text-sm">Select employees to compare</span>
+                </div>
+                {selectedForComparison.length > 0 && (
+                  <Badge variant="secondary" data-testid="badge-comparison-count">
+                    {selectedForComparison.length} selected
+                  </Badge>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {uniqueNames.map((name) => {
+                  const isSelected = selectedForComparison.includes(name);
+                  return (
+                    <Button
+                      key={name}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleComparison(name)}
+                      className="gap-2"
+                      data-testid={`button-compare-${name.replace(/\s+/g, '-').toLowerCase()}`}
+                    >
+                      {isSelected && <Check className="w-3 h-3" />}
+                      {name}
+                    </Button>
+                  );
+                })}
+              </div>
+              {selectedForComparison.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Click on employee names above to add them to the comparison view.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

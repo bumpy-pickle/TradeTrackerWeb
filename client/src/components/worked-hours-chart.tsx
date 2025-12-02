@@ -39,23 +39,53 @@ export function WorkedHoursChart({ data }: WorkedHoursChartProps) {
   const yAxisMax = Math.ceil(dataMax / 100) * 100 + 50;
   const yAxisMin = dataMin < 0 ? Math.floor(dataMin / 100) * 100 - 50 : -50;
 
-  // Custom tooltip
+  // Custom tooltip with detailed trade information
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const item = data.find((d) => d.name.startsWith(label.replace("...", "")));
+      const theyWorked = payload.find((p: any) => p.dataKey === "theyWorked")?.value || 0;
+      const youWorked = payload.find((p: any) => p.dataKey === "youWorked")?.value || 0;
+      const total = payload.find((p: any) => p.dataKey === "total")?.value || 0;
+      
+      // Calculate balance status
+      const getBalanceStatus = (balance: number) => {
+        if (balance > 0) return { text: "Owed hours", className: "text-chart-3" };
+        if (balance < 0) return { text: "Owes hours", className: "text-destructive" };
+        return { text: "Even", className: "text-muted-foreground" };
+      };
+      const balanceStatus = getBalanceStatus(total);
+      
       return (
-        <div className="bg-card border rounded-md shadow-lg p-3" data-testid="chart-tooltip">
-          <p className="font-medium text-foreground mb-2">{item?.name || label}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2 text-sm">
-              <span
-                className="w-3 h-3 rounded-sm"
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-muted-foreground">{entry.name}:</span>
-              <span className="font-medium text-foreground">{entry.value}</span>
+        <div className="bg-card border rounded-md shadow-lg p-4 min-w-[220px]" data-testid="chart-tooltip">
+          <p className="font-semibold text-foreground text-base mb-3 border-b pb-2">{item?.name || label}</p>
+          <div className="space-y-2">
+            {payload.filter((p: any) => p.dataKey !== "total").map((entry: any, index: number) => (
+              <div key={index} className="flex items-center justify-between gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-3 h-3 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: entry.color }}
+                  />
+                  <span className="text-muted-foreground">{entry.name}</span>
+                </div>
+                <span className="font-medium text-foreground tabular-nums">{entry.value} hrs</span>
+              </div>
+            ))}
+            <div className="border-t pt-2 mt-2">
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">Net Balance</span>
+                <span className={`font-semibold tabular-nums ${balanceStatus.className}`}>
+                  {total > 0 ? "+" : ""}{total} hrs
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4 text-xs mt-1">
+                <span className="text-muted-foreground">Status</span>
+                <span className={`font-medium ${balanceStatus.className}`}>
+                  {balanceStatus.text}
+                </span>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
       );
     }
