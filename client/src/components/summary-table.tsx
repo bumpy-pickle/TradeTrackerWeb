@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { TriangleIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { PersonSummary } from "@shared/schema";
 
@@ -56,6 +57,24 @@ export function SummaryTable({ data }: SummaryTableProps) {
       : <ArrowDown className="w-3.5 h-3.5 text-primary" />;
   };
 
+  const MobileSortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-3 h-3" />;
+    }
+    return sortDirection === "asc" 
+      ? <ArrowUp className="w-3 h-3" />
+      : <ArrowDown className="w-3 h-3" />;
+  };
+
+  const getSortLabel = (column: SortColumn) => {
+    switch (column) {
+      case "name": return "Name";
+      case "youWorked": return "You";
+      case "theyWorked": return "They";
+      case "total": return "Total";
+    }
+  };
+
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground" data-testid="table-empty-summary">
@@ -70,11 +89,32 @@ export function SummaryTable({ data }: SummaryTableProps) {
     return "text-muted-foreground";
   };
 
+  const sortColumns: SortColumn[] = ["name", "youWorked", "theyWorked", "total"];
+
   return (
     <div className="relative" data-testid="table-summary">
       {/* Mobile card view */}
-      <div className="block md:hidden max-h-[400px] overflow-y-auto">
-        <div className="divide-y">
+      <div className="block md:hidden">
+        {/* Mobile sort controls */}
+        <div className="flex items-center gap-1 p-2 border-b bg-muted/30 overflow-x-auto" data-testid="mobile-sort-controls">
+          <span className="text-xs text-muted-foreground whitespace-nowrap mr-1">Sort:</span>
+          {sortColumns.map((column) => (
+            <Button
+              key={column}
+              variant={sortColumn === column ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSort(column)}
+              className="h-7 px-2 text-xs gap-1 flex-shrink-0"
+              data-testid={`button-sort-mobile-${column}`}
+            >
+              {getSortLabel(column)}
+              <MobileSortIcon column={column} />
+            </Button>
+          ))}
+        </div>
+        
+        {/* Mobile cards list */}
+        <div className="max-h-[350px] overflow-y-auto divide-y">
           {sortedData.map((row, index) => (
             <div
               key={row.name}
