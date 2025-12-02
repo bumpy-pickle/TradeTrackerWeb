@@ -47,60 +47,9 @@ export default function Dashboard() {
     return Array.from(names).sort();
   }, [trades]);
 
-  // Calculate summary data for each person
-  const summaryData = useMemo((): PersonSummary[] => {
-    const summaryMap = new Map<string, { youWorked: number; theyWorked: number }>();
-
-    // Initialize all unique names
-    uniqueNames.forEach((name) => {
-      summaryMap.set(name, { youWorked: 0, theyWorked: 0 });
-    });
-
-    // Calculate hours
-    trades.forEach((trade) => {
-      // Person1 worked for Person2 (Person1's "youWorked" increases)
-      const person1Data = summaryMap.get(trade.person1);
-      if (person1Data) {
-        person1Data.youWorked += trade.hours;
-      }
-
-      // Person2 received work from Person1 (Person2's "theyWorked" increases)
-      const person2Data = summaryMap.get(trade.person2);
-      if (person2Data) {
-        person2Data.theyWorked += trade.hours;
-      }
-    });
-
-    return Array.from(summaryMap.entries())
-      .map(([name, data]) => ({
-        name,
-        youWorked: data.youWorked,
-        theyWorked: data.theyWorked,
-        total: data.youWorked - data.theyWorked,
-      }))
-      .sort((a, b) => b.total - a.total);
-  }, [trades, uniqueNames]);
-
-  // Calculate chart data
-  const chartData = useMemo((): WorkedHoursChartData[] => {
-    return summaryData.map((summary) => ({
-      name: summary.name,
-      theyWorked: summary.theyWorked,
-      youWorked: summary.youWorked,
-      total: summary.total,
-    }));
-  }, [summaryData]);
-
-  // Filter data based on selected name, date range, and search query
-  const filteredTrades = useMemo(() => {
+  // Filter trades based on date range and search query first (before summary calculation)
+  const dateAndSearchFilteredTrades = useMemo(() => {
     let filtered = trades;
-    
-    // Filter by name
-    if (selectedName !== "all") {
-      filtered = filtered.filter(
-        (trade) => trade.person1 === selectedName || trade.person2 === selectedName
-      );
-    }
     
     // Filter by date range
     if (startDate) {
@@ -132,8 +81,81 @@ export default function Dashboard() {
     }
     
     return filtered;
-  }, [trades, selectedName, startDate, endDate, searchQuery]);
+  }, [trades, startDate, endDate, searchQuery]);
 
+  // Calculate summary data for each person based on date/search filtered trades
+  const summaryData = useMemo((): PersonSummary[] => {
+    // Get unique names from filtered trades
+    const filteredNames = new Set<string>();
+    dateAndSearchFilteredTrades.forEach((trade) => {
+      filteredNames.add(trade.person1);
+      filteredNames.add(trade.person2);
+    });
+    
+    const summaryMap = new Map<string, { youWorked: number; theyWorked: number }>();
+
+    // Initialize all names from filtered trades
+    filteredNames.forEach((name) => {
+      summaryMap.set(name, { youWorked: 0, theyWorked: 0 });
+    });
+
+    // Calculate hours from filtered trades
+    dateAndSearchFilteredTrades.forEach((trade) => {
+      // Person1 worked for Person2 (Person1's "youWorked" increases)
+      const person1Data = summaryMap.get(trade.person1);
+      if (person1Data) {
+        person1Data.youWorked += trade.hours;
+      }
+
+      // Person2 received work from Person1 (Person2's "theyWorked" increases)
+      const person2Data = summaryMap.get(trade.person2);
+      if (person2Data) {
+        person2Data.theyWorked += trade.hours;
+      }
+    });
+
+    return Array.from(summaryMap.entries())
+      .map(([name, data]) => ({
+        name,
+        youWorked: data.youWorked,
+        theyWorked: data.theyWorked,
+        total: data.youWorked - data.theyWorked,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [dateAndSearchFilteredTrades]);
+
+  // Calculate chart data
+  const chartData = useMemo((): WorkedHoursChartData[] => {
+    return summaryData.map((summary) => ({
+      name: summary.name,
+      theyWorked: summary.theyWorked,
+      youWorked: summary.youWorked,
+      total: summary.total,
+    }));
+  }, [summaryData]);
+
+  // Further filter trades by selected name and comparison mode (for display and export)
+  const filteredTrades = useMemo(() => {
+    let filtered = dateAndSearchFilteredTrades;
+    
+    // In comparison mode, filter by selected employees for comparison
+    if (comparisonMode && selectedForComparison.length > 0) {
+      filtered = filtered.filter(
+        (trade) => 
+          selectedForComparison.includes(trade.person1) || 
+          selectedForComparison.includes(trade.person2)
+      );
+    } else if (selectedName !== "all") {
+      // Filter by single name when not in comparison mode
+      filtered = filtered.filter(
+        (trade) => trade.person1 === selectedName || trade.person2 === selectedName
+      );
+    }
+    
+    return filtered;
+  }, [dateAndSearchFilteredTrades, selectedName, comparisonMode, selectedForComparison]);
+
+  // Filter summary and chart data based on name selection and comparison mode
   const filteredSummary = useMemo(() => {
     if (comparisonMode && selectedForComparison.length > 0) {
       return summaryData.filter((s) => selectedForComparison.includes(s.name));

@@ -24,10 +24,11 @@ export function WorkedHoursChart({ data }: WorkedHoursChartProps) {
     );
   }
 
-  // Truncate long names for display
+  // Keep original name for tooltip lookup, create display name for X-axis
   const formattedData = data.map((item) => ({
     ...item,
     displayName: item.name.length > 12 ? item.name.substring(0, 10) + "..." : item.name,
+    originalName: item.name, // Keep original for tooltip
   }));
 
   // Calculate min/max value for Y axis based on actual data
@@ -42,7 +43,8 @@ export function WorkedHoursChart({ data }: WorkedHoursChartProps) {
   // Custom tooltip with detailed trade information
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const item = data.find((d) => d.name.startsWith(label.replace("...", "")));
+      // Get the original name from the payload data (more reliable than label matching)
+      const originalName = payload[0]?.payload?.originalName || payload[0]?.payload?.name || label;
       const theyWorked = payload.find((p: any) => p.dataKey === "theyWorked")?.value || 0;
       const youWorked = payload.find((p: any) => p.dataKey === "youWorked")?.value || 0;
       const total = payload.find((p: any) => p.dataKey === "total")?.value || 0;
@@ -57,7 +59,7 @@ export function WorkedHoursChart({ data }: WorkedHoursChartProps) {
       
       return (
         <div className="bg-card border rounded-md shadow-lg p-4 min-w-[220px]" data-testid="chart-tooltip">
-          <p className="font-semibold text-foreground text-base mb-3 border-b pb-2">{item?.name || label}</p>
+          <p className="font-semibold text-foreground text-base mb-3 border-b pb-2">{originalName}</p>
           <div className="space-y-2">
             {payload.filter((p: any) => p.dataKey !== "total").map((entry: any, index: number) => (
               <div key={index} className="flex items-center justify-between gap-4 text-sm">
