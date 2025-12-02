@@ -178,7 +178,7 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
 
   if (variant === "large") {
     return (
-      <div className="flex flex-col items-center gap-4 w-full max-w-md">
+      <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto">
         {/* Primary action: Paste Data */}
         <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
           <DialogTrigger asChild>
