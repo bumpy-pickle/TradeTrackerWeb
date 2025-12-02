@@ -35,6 +35,116 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Paste data endpoint - parse pasted text from Excel/spreadsheet
+  app.post("/api/parse-paste", (req, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text || typeof text !== "string" || text.trim().length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No data provided. Please paste your Excel data." 
+        });
+      }
+
+      // Parse the pasted text - Excel copies as tab-separated values
+      const lines = text.trim().split(/\r?\n/);
+      
+      if (lines.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No data rows found in pasted text." 
+        });
+      }
+
+      // Detect delimiter (tab or comma)
+      const firstLine = lines[0];
+      const delimiter = firstLine.includes("\t") ? "\t" : ",";
+      
+      // Parse header row to find column indices
+      const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
+      
+      // Find column indices for required fields
+      // Expected: Person 1 (E), Trade Date (F), Trade Start Time (G), Trade End Time (H), Person 2 (K)
+      const person1Index = findColumnIndex(headers, ["person 1", "person1", "name1", "employee1", "from", "employee"]);
+      const person2Index = findColumnIndex(headers, ["person 2", "person2", "name2", "employee2", "to", "partner"]);
+      const dateIndex = findColumnIndex(headers, ["trade date", "date", "shift date"]);
+      const startTimeIndex = findColumnIndex(headers, ["trade start time", "start time", "start", "time start"]);
+      const endTimeIndex = findColumnIndex(headers, ["trade end time", "end time", "end", "time end"]);
+      const hoursIndex = findColumnIndex(headers, ["hours", "hour", "duration"]);
+
+      if (person1Index === -1 || person2Index === -1 || dateIndex === -1) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Could not find required columns. Please ensure your data has headers: Person 1, Trade Date, Person 2, and either Trade Start Time/End Time or Hours." 
+        });
+      }
+
+      const trades: TradeRow[] = [];
+      
+      // Parse data rows (skip header)
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const cells = line.split(delimiter).map(c => c.trim());
+        
+        const person1 = cells[person1Index] || "";
+        const person2 = cells[person2Index] || "";
+        const date = cells[dateIndex] || "";
+        const startTime = startTimeIndex !== -1 ? cells[startTimeIndex] : null;
+        const endTime = endTimeIndex !== -1 ? cells[endTimeIndex] : null;
+        const directHours = hoursIndex !== -1 ? cells[hoursIndex] : null;
+
+        if (person1 && person2 && date) {
+          let hoursNum = 0;
+          
+          // Calculate hours from start and end time (preferred method)
+          if (startTime && endTime) {
+            hoursNum = calculateHoursFromTimes(startTime, endTime);
+          } else if (directHours) {
+            // Fallback to direct hours column if available
+            hoursNum = parseFloat(String(directHours).replace(/[^\d.-]/g, ""));
+          }
+          
+          if (!isNaN(hoursNum) && hoursNum > 0) {
+            trades.push({
+              person1: String(person1).trim().toUpperCase(),
+              person2: String(person2).trim().toUpperCase(),
+              date: parseDate(date),
+              hours: Math.round(hoursNum * 100) / 100,
+            });
+          }
+        }
+      }
+
+      if (trades.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No valid trade data found. Please check that your data includes Person 1, Trade Date, Person 2, and valid time information." 
+        });
+      }
+
+      // Add IDs to trades
+      const tradesWithIds = trades.map((trade) => ({
+        id: randomUUID(),
+        ...trade,
+      }));
+
+      res.json({ 
+        success: true, 
+        trades: tradesWithIds,
+        message: `Successfully loaded ${tradesWithIds.length} trades` 
+      });
+    } catch (error) {
+      console.error("Error parsing pasted data:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : "Failed to parse pasted data" 
+      });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), (req, res) => {
     try {
@@ -141,6 +251,19 @@ export async function registerRoutes(
   });
 
   return httpServer;
+}
+
+// Helper function to find column index by various possible names (for paste parsing)
+function findColumnIndex(headers: string[], possibleNames: string[]): number {
+  for (let i = 0; i < headers.length; i++) {
+    const header = headers[i].toLowerCase().trim();
+    for (const name of possibleNames) {
+      if (header === name || header.includes(name)) {
+        return i;
+      }
+    }
+  }
+  return -1;
 }
 
 // Helper function to find column value by various possible names

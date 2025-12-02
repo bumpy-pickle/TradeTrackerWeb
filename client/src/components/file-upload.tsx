@@ -2,7 +2,17 @@ import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, ClipboardPaste } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type { Trade, UploadResponse } from "@shared/schema";
 
 interface FileUploadProps {
@@ -29,10 +39,29 @@ async function uploadFile(file: File): Promise<UploadResponse> {
   return response.json();
 }
 
+async function parsePastedData(text: string): Promise<UploadResponse> {
+  const response = await fetch("/api/parse-paste", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to parse pasted data");
+  }
+
+  return response.json();
+}
+
 export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "default" }: FileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pastedText, setPastedText] = useState("");
   const { toast } = useToast();
 
   const uploadMutation = useMutation({
@@ -54,6 +83,32 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
         variant: "destructive",
       });
       setFileName(null);
+    },
+    onSettled: () => {
+      setIsLoading(false);
+    },
+  });
+
+  const pasteMutation = useMutation({
+    mutationFn: parsePastedData,
+    onMutate: () => {
+      setIsLoading(true);
+    },
+    onSuccess: (data) => {
+      onDataUpload(data.trades);
+      toast({
+        title: "Data imported successfully",
+        description: `Loaded ${data.trades.length} trade records from pasted data`,
+      });
+      setPasteDialogOpen(false);
+      setPastedText("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Import failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       setIsLoading(false);
@@ -83,7 +138,6 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
     if (file) {
       handleFile(file);
     }
-    // Reset input so the same file can be uploaded again
     e.target.value = "";
   };
 
@@ -108,62 +162,132 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
     }
   };
 
-  const isPending = uploadMutation.isPending || isLoading;
+  const handlePasteSubmit = () => {
+    if (!pastedText.trim()) {
+      toast({
+        title: "No data",
+        description: "Please paste some data first",
+        variant: "destructive",
+      });
+      return;
+    }
+    pasteMutation.mutate(pastedText);
+  };
+
+  const isPending = uploadMutation.isPending || pasteMutation.isPending || isLoading;
 
   if (variant === "large") {
     return (
-      <div
-        className={`
-          relative w-full max-w-md border-2 border-dashed rounded-md p-8
-          transition-colors cursor-pointer
-          ${dragActive 
-            ? "border-primary bg-primary/5" 
-            : "border-muted-foreground/25 hover:border-primary/50"
-          }
-        `}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={handleClick}
-        data-testid="dropzone-upload"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={handleChange}
-          className="hidden"
-          data-testid="input-file-dropzone"
-        />
-        <div className="flex flex-col items-center gap-3 text-center">
-          {isPending ? (
-            <>
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-              <p className="text-sm text-muted-foreground" data-testid="text-upload-progress">
-                Processing {fileName}...
-              </p>
-            </>
-          ) : (
-            <>
-              <FileSpreadsheet className="w-10 h-10 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium text-foreground" data-testid="text-dropzone-instructions">
-                  Drop your Excel file here or click to browse
+      <div className="flex flex-col items-center gap-4">
+        <div
+          className={`
+            relative w-full max-w-md border-2 border-dashed rounded-md p-8
+            transition-colors cursor-pointer
+            ${dragActive 
+              ? "border-primary bg-primary/5" 
+              : "border-muted-foreground/25 hover:border-primary/50"
+            }
+          `}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          onClick={handleClick}
+          data-testid="dropzone-upload"
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleChange}
+            className="hidden"
+            data-testid="input-file-dropzone"
+          />
+          <div className="flex flex-col items-center gap-3 text-center">
+            {isPending ? (
+              <>
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <p className="text-sm text-muted-foreground" data-testid="text-upload-progress">
+                  Processing {fileName || "data"}...
                 </p>
-                <p className="text-xs text-muted-foreground mt-1" data-testid="text-dropzone-formats">
-                  Supports .xlsx and .xls files
-                </p>
-              </div>
-            </>
-          )}
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="w-10 h-10 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground" data-testid="text-dropzone-instructions">
+                    Drop your Excel file here or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1" data-testid="text-dropzone-formats">
+                    Supports .xlsx and .xls files
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
+        
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <div className="h-px w-12 bg-border" />
+          <span>or</span>
+          <div className="h-px w-12 bg-border" />
+        </div>
+        
+        <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" disabled={isPending} data-testid="button-paste-large">
+              <ClipboardPaste className="w-4 h-4 mr-2" />
+              Paste from Excel
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Paste Excel Data</DialogTitle>
+              <DialogDescription>
+                Copy rows from Excel (including headers) and paste them below. The data should include columns for Person 1, Trade Date, Trade Start Time, Trade End Time, and Person 2.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              placeholder="Paste your Excel data here...&#10;&#10;Example:&#10;Person 1&#9;Trade Date&#9;Trade Start Time&#9;Trade End Time&#9;Person 2&#10;SMITH, JOHN&#9;2024-01-15&#9;7:00 AM&#9;7:00 PM&#9;DOE, JANE"
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              className="min-h-[200px] font-mono text-sm"
+              data-testid="textarea-paste"
+            />
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setPasteDialogOpen(false);
+                  setPastedText("");
+                }}
+                data-testid="button-cancel-paste"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handlePasteSubmit}
+                disabled={pasteMutation.isPending || !pastedText.trim()}
+                data-testid="button-submit-paste"
+              >
+                {pasteMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Import Data"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="flex items-center gap-2">
       <input
         ref={fileInputRef}
         type="file"
@@ -182,7 +306,7 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
         {isPending ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Uploading...
+            Processing...
           </>
         ) : (
           <>
@@ -191,6 +315,56 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
           </>
         )}
       </Button>
-    </>
+      
+      <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" disabled={isPending} data-testid="button-paste">
+            <ClipboardPaste className="w-4 h-4 mr-2" />
+            Paste
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Paste Excel Data</DialogTitle>
+            <DialogDescription>
+              Copy rows from Excel (including headers) and paste them below. The data should include columns for Person 1, Trade Date, Trade Start Time, Trade End Time, and Person 2.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Paste your Excel data here...&#10;&#10;Example:&#10;Person 1&#9;Trade Date&#9;Trade Start Time&#9;Trade End Time&#9;Person 2&#10;SMITH, JOHN&#9;2024-01-15&#9;7:00 AM&#9;7:00 PM&#9;DOE, JANE"
+            value={pastedText}
+            onChange={(e) => setPastedText(e.target.value)}
+            className="min-h-[200px] font-mono text-sm"
+            data-testid="textarea-paste-header"
+          />
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setPasteDialogOpen(false);
+                setPastedText("");
+              }}
+              data-testid="button-cancel-paste-header"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handlePasteSubmit}
+              disabled={pasteMutation.isPending || !pastedText.trim()}
+              data-testid="button-submit-paste-header"
+            >
+              {pasteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Import Data"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
