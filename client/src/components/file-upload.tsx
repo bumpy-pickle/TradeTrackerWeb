@@ -178,77 +178,38 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
 
   if (variant === "large") {
     return (
-      <div className="flex flex-col items-center gap-4">
-        <div
-          className={`
-            relative w-full max-w-md border-2 border-dashed rounded-md p-8
-            transition-colors cursor-pointer
-            ${dragActive 
-              ? "border-primary bg-primary/5" 
-              : "border-muted-foreground/25 hover:border-primary/50"
-            }
-          `}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={handleClick}
-          data-testid="dropzone-upload"
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleChange}
-            className="hidden"
-            data-testid="input-file-dropzone"
-          />
-          <div className="flex flex-col items-center gap-3 text-center">
-            {isPending ? (
-              <>
-                <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-sm text-muted-foreground" data-testid="text-upload-progress">
-                  Processing {fileName || "data"}...
-                </p>
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="w-10 h-10 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium text-foreground" data-testid="text-dropzone-instructions">
-                    Drop your Excel file here or click to browse
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1" data-testid="text-dropzone-formats">
-                    Supports .xlsx and .xls files
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <div className="h-px w-12 bg-border" />
-          <span>or</span>
-          <div className="h-px w-12 bg-border" />
-        </div>
-        
+      <div className="flex flex-col items-center gap-4 w-full max-w-md">
+        {/* Primary action: Paste Data */}
         <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" disabled={isPending} data-testid="button-paste-large">
-              <ClipboardPaste className="w-4 h-4 mr-2" />
-              Paste from Excel
+            <Button 
+              size="lg" 
+              disabled={isPending} 
+              className="w-full"
+              data-testid="button-paste-large"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <ClipboardPaste className="w-5 h-5 mr-2" />
+                  Paste Data
+                </>
+              )}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle>Paste Excel Data</DialogTitle>
+              <DialogTitle>Paste Data</DialogTitle>
               <DialogDescription>
-                Copy rows from Excel and paste them below. Data is read from fixed columns: E (Person 1), F (Date), G (Start Time), H (End Time), K (Person 2).
+                Copy rows from your data source and paste them below. Data is read from fixed columns: E (Person 1), F (Date), G (Start Time), H (End Time), K (Person 2).
               </DialogDescription>
             </DialogHeader>
             <Textarea
-              placeholder="Paste your Excel data here...&#10;&#10;Select columns A through K (or more) in Excel, copy, and paste here.&#10;The system will read from columns E, F, G, H, and K automatically."
+              placeholder="Paste your data here...&#10;&#10;Copy the data from your source (including all columns) and paste here.&#10;The system will read from columns E, F, G, H, and K automatically."
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
               className="min-h-[200px] font-mono text-sm"
@@ -282,6 +243,50 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        
+        <div className="flex items-center gap-3 text-sm text-muted-foreground w-full">
+          <div className="h-px flex-1 bg-border" />
+          <span>or upload a file</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        
+        {/* Secondary action: File upload dropzone */}
+        <div
+          className={`
+            relative w-full border-2 border-dashed rounded-md p-6
+            transition-colors cursor-pointer
+            ${dragActive 
+              ? "border-primary bg-primary/5" 
+              : "border-muted-foreground/25 hover:border-primary/50"
+            }
+          `}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          onClick={handleClick}
+          data-testid="dropzone-upload"
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleChange}
+            className="hidden"
+            data-testid="input-file-dropzone"
+          />
+          <div className="flex flex-col items-center gap-2 text-center">
+            <FileSpreadsheet className="w-8 h-8 text-muted-foreground" />
+            <div>
+              <p className="text-sm text-muted-foreground" data-testid="text-dropzone-instructions">
+                Drop Excel file here or click to browse
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1" data-testid="text-dropzone-formats">
+                Supports .xlsx and .xls files
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

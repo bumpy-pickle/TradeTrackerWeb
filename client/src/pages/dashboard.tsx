@@ -20,6 +20,7 @@ import { FileUpload } from "@/components/file-upload";
 import { WorkedHoursChart } from "@/components/worked-hours-chart";
 import { TradeListTable } from "@/components/trade-list-table";
 import { SummaryTable } from "@/components/summary-table";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { exportTradesToCSV, exportSummaryToCSV, exportAllToCSV } from "@/lib/export-utils";
 import { Download, FileSpreadsheet, Table2, FileText, CalendarIcon, Search, X, Users, Check } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -269,6 +270,7 @@ export default function Dashboard() {
                 isLoading={isLoading}
                 setIsLoading={setIsLoading}
               />
+              <ThemeToggle />
             </div>
           </div>
           
@@ -465,7 +467,7 @@ export default function Dashboard() {
                     No Trade Data Uploaded
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1" data-testid="text-empty-description">
-                    Upload an Excel file (.xlsx) to visualize your shift trade data
+                    Paste data or upload an Excel file to visualize your shift trades
                   </p>
                 </div>
                 <FileUpload 
