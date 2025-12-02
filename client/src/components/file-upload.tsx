@@ -244,11 +244,11 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
             <DialogHeader>
               <DialogTitle>Paste Excel Data</DialogTitle>
               <DialogDescription>
-                Copy rows from Excel (including headers) and paste them below. The data should include columns for Person 1, Trade Date, Trade Start Time, Trade End Time, and Person 2.
+                Copy rows from Excel and paste them below. Data is read from fixed columns: E (Person 1), F (Date), G (Start Time), H (End Time), K (Person 2).
               </DialogDescription>
             </DialogHeader>
             <Textarea
-              placeholder="Paste your Excel data here...&#10;&#10;Example:&#10;Person 1&#9;Trade Date&#9;Trade Start Time&#9;Trade End Time&#9;Person 2&#10;SMITH, JOHN&#9;2024-01-15&#9;7:00 AM&#9;7:00 PM&#9;DOE, JANE"
+              placeholder="Paste your Excel data here...&#10;&#10;Select columns A through K (or more) in Excel, copy, and paste here.&#10;The system will read from columns E, F, G, H, and K automatically."
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
               className="min-h-[200px] font-mono text-sm"
@@ -327,11 +327,11 @@ export function FileUpload({ onDataUpload, isLoading, setIsLoading, variant = "d
           <DialogHeader>
             <DialogTitle>Paste Excel Data</DialogTitle>
             <DialogDescription>
-              Copy rows from Excel (including headers) and paste them below. The data should include columns for Person 1, Trade Date, Trade Start Time, Trade End Time, and Person 2.
+              Copy rows from Excel and paste them below. Data is read from fixed columns: E (Person 1), F (Date), G (Start Time), H (End Time), K (Person 2).
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Paste your Excel data here...&#10;&#10;Example:&#10;Person 1&#9;Trade Date&#9;Trade Start Time&#9;Trade End Time&#9;Person 2&#10;SMITH, JOHN&#9;2024-01-15&#9;7:00 AM&#9;7:00 PM&#9;DOE, JANE"
+            placeholder="Paste your Excel data here...&#10;&#10;Select columns A through K (or more) in Excel, copy, and paste here.&#10;The system will read from columns E, F, G, H, and K automatically."
             value={pastedText}
             onChange={(e) => setPastedText(e.target.value)}
             className="min-h-[200px] font-mono text-sm"

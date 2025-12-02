@@ -61,51 +61,40 @@ export async function registerRoutes(
       const firstLine = lines[0];
       const delimiter = firstLine.includes("\t") ? "\t" : ",";
       
-      // Parse header row to find column indices
-      const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
-      
-      // Find column indices for required fields
-      // Expected: Person 1 (E), Trade Date (F), Trade Start Time (G), Trade End Time (H), Person 2 (K)
-      const person1Index = findColumnIndex(headers, ["person 1", "person1", "name1", "employee1", "from", "employee"]);
-      const person2Index = findColumnIndex(headers, ["person 2", "person2", "name2", "employee2", "to", "partner"]);
-      const dateIndex = findColumnIndex(headers, ["trade date", "date", "shift date"]);
-      const startTimeIndex = findColumnIndex(headers, ["trade start time", "start time", "start", "time start"]);
-      const endTimeIndex = findColumnIndex(headers, ["trade end time", "end time", "end", "time end"]);
-      const hoursIndex = findColumnIndex(headers, ["hours", "hour", "duration"]);
-
-      if (person1Index === -1 || person2Index === -1 || dateIndex === -1) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Could not find required columns. Please ensure your data has headers: Person 1, Trade Date, Person 2, and either Trade Start Time/End Time or Hours." 
-        });
-      }
+      // Fixed column indices (0-based):
+      // Column E (index 4): Person 1
+      // Column F (index 5): Trade Date
+      // Column G (index 6): Trade Start Time
+      // Column H (index 7): Trade End Time
+      // Column K (index 10): Person 2
+      const PERSON1_COL = 4;  // Column E
+      const DATE_COL = 5;     // Column F
+      const START_TIME_COL = 6; // Column G
+      const END_TIME_COL = 7;   // Column H
+      const PERSON2_COL = 10;   // Column K
 
       const trades: TradeRow[] = [];
       
-      // Parse data rows (skip header)
-      for (let i = 1; i < lines.length; i++) {
+      // Process all rows - skip header row if detected (date column contains non-date text)
+      for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
         
-        const cells = line.split(delimiter).map(c => c.trim());
+        const cells = line.split(delimiter);
         
-        const person1 = cells[person1Index] || "";
-        const person2 = cells[person2Index] || "";
-        const date = cells[dateIndex] || "";
-        const startTime = startTimeIndex !== -1 ? cells[startTimeIndex] : null;
-        const endTime = endTimeIndex !== -1 ? cells[endTimeIndex] : null;
-        const directHours = hoursIndex !== -1 ? cells[hoursIndex] : null;
+        const person1 = cells[PERSON1_COL]?.trim() || "";
+        const date = cells[DATE_COL]?.trim() || "";
+        const startTime = cells[START_TIME_COL]?.trim() || "";
+        const endTime = cells[END_TIME_COL]?.trim() || "";
+        const person2 = cells[PERSON2_COL]?.trim() || "";
+
+        // Skip if this looks like a header row (date is text like "Trade Date" or "Date")
+        if (/^[a-zA-Z\s]+$/.test(date)) {
+          continue;
+        }
 
         if (person1 && person2 && date) {
-          let hoursNum = 0;
-          
-          // Calculate hours from start and end time (preferred method)
-          if (startTime && endTime) {
-            hoursNum = calculateHoursFromTimes(startTime, endTime);
-          } else if (directHours) {
-            // Fallback to direct hours column if available
-            hoursNum = parseFloat(String(directHours).replace(/[^\d.-]/g, ""));
-          }
+          const hoursNum = calculateHoursFromTimes(startTime, endTime);
           
           if (!isNaN(hoursNum) && hoursNum > 0) {
             trades.push({
@@ -121,7 +110,7 @@ export async function registerRoutes(
       if (trades.length === 0) {
         return res.status(400).json({ 
           success: false, 
-          message: "No valid trade data found. Please check that your data includes Person 1, Trade Date, Person 2, and valid time information." 
+          message: "No valid trade data found. Please ensure you paste data with columns E (Person 1), F (Date), G (Start Time), H (End Time), and K (Person 2)" 
         });
       }
 
@@ -169,11 +158,13 @@ export async function registerRoutes(
 
       const worksheet = workbook.Sheets[sheetName];
       
-      // Convert to JSON with header row - use raw values for time calculations
+      // Convert to array of arrays (no headers) to use fixed column positions
+      // Column indices: E=4, F=5, G=6, H=7, K=10 (0-based)
       const rawData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1, // Return array of arrays
         raw: true,
         defval: ""
-      });
+      }) as any[][];
 
       if (rawData.length === 0) {
         return res.status(400).json({ 
@@ -182,42 +173,45 @@ export async function registerRoutes(
         });
       }
 
-      // Map column names (case-insensitive matching)
-      // Expected columns: E = Person 1, F = Trade Date, G = Trade Start Time, H = Trade End Time, K = Person 2
+      // Fixed column indices (0-based):
+      // Column E (index 4): Person 1
+      // Column F (index 5): Trade Date
+      // Column G (index 6): Trade Start Time
+      // Column H (index 7): Trade End Time
+      // Column K (index 10): Person 2
+      const PERSON1_COL = 4;  // Column E
+      const DATE_COL = 5;     // Column F
+      const START_TIME_COL = 6; // Column G
+      const END_TIME_COL = 7;   // Column H
+      const PERSON2_COL = 10;   // Column K
+
       const trades: TradeRow[] = [];
       
-      for (const row of rawData as Record<string, any>[]) {
-        // Find columns by various possible names
-        // Person 1 (Column E)
-        const person1 = findColumnValue(row, ["person 1", "person1", "name1", "employee1", "from", "employee"]);
-        // Person 2 (Column K)
-        const person2 = findColumnValue(row, ["person 2", "person2", "name2", "employee2", "to", "partner"]);
-        // Trade Date (Column F)
-        const date = findColumnValue(row, ["trade date", "date", "shift date"]);
-        // Trade Start Time (Column G)
-        const startTime = findColumnValue(row, ["trade start time", "start time", "start", "time start"]);
-        // Trade End Time (Column H)
-        const endTime = findColumnValue(row, ["trade end time", "end time", "end", "time end"]);
-        // Also try direct hours column as fallback
-        const directHours = findColumnValue(row, ["hours", "hour", "duration"]);
+      // Process all rows - skip header row if detected (date column contains non-date text)
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || row.length === 0) continue;
+        
+        const person1 = row[PERSON1_COL];
+        const date = row[DATE_COL];
+        const startTime = row[START_TIME_COL];
+        const endTime = row[END_TIME_COL];
+        const person2 = row[PERSON2_COL];
+
+        // Skip if this looks like a header row (date is text like "Trade Date" or "Date")
+        if (typeof date === "string" && /^[a-zA-Z\s]+$/.test(date.trim())) {
+          continue;
+        }
 
         if (person1 && person2 && date) {
-          let hoursNum = 0;
-          
-          // Calculate hours from start and end time (preferred method)
-          if (startTime !== null && endTime !== null) {
-            hoursNum = calculateHoursFromTimes(startTime, endTime);
-          } else if (directHours !== null) {
-            // Fallback to direct hours column if available
-            hoursNum = parseFloat(String(directHours).replace(/[^\d.-]/g, ""));
-          }
+          const hoursNum = calculateHoursFromTimes(startTime, endTime);
           
           if (!isNaN(hoursNum) && hoursNum > 0) {
             trades.push({
               person1: String(person1).trim().toUpperCase(),
               person2: String(person2).trim().toUpperCase(),
               date: parseDate(date),
-              hours: Math.round(hoursNum * 100) / 100, // Round to 2 decimal places
+              hours: Math.round(hoursNum * 100) / 100,
             });
           }
         }
@@ -226,7 +220,7 @@ export async function registerRoutes(
       if (trades.length === 0) {
         return res.status(400).json({ 
           success: false, 
-          message: "No valid trade data found. Please ensure your Excel file has columns: Person 1, Trade Date, Trade Start Time, Trade End Time, Person 2" 
+          message: "No valid trade data found. Please ensure your Excel file has data in columns E (Person 1), F (Date), G (Start Time), H (End Time), and K (Person 2)" 
         });
       }
 
@@ -251,32 +245,6 @@ export async function registerRoutes(
   });
 
   return httpServer;
-}
-
-// Helper function to find column index by various possible names (for paste parsing)
-function findColumnIndex(headers: string[], possibleNames: string[]): number {
-  for (let i = 0; i < headers.length; i++) {
-    const header = headers[i].toLowerCase().trim();
-    for (const name of possibleNames) {
-      if (header === name || header.includes(name)) {
-        return i;
-      }
-    }
-  }
-  return -1;
-}
-
-// Helper function to find column value by various possible names
-function findColumnValue(row: Record<string, any>, possibleNames: string[]): any {
-  for (const key of Object.keys(row)) {
-    const normalizedKey = key.toLowerCase().trim();
-    for (const name of possibleNames) {
-      if (normalizedKey === name || normalizedKey.includes(name)) {
-        return row[key];
-      }
-    }
-  }
-  return null;
 }
 
 // Helper function to calculate hours from start and end times
